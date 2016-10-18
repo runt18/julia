@@ -1023,6 +1023,7 @@ end))
 
 @deprecate is (===)
 
+
 @deprecate_binding Filter    Iterators.Filter
 @deprecate_binding Zip       Iterators.Zip
 @deprecate filter(flt, itr)  Iterators.filter(flt, itr)
@@ -1032,5 +1033,26 @@ end))
 @deprecate_binding drop      Iterators.drop
 @deprecate_binding cycle     Iterators.cycle
 @deprecate_binding repeated  Iterators.repeated
+
+# Not exported, but probably better to have deprecations anyway
+function reduced_dims(::Tuple{}, d::Int)
+    d < 1 && throw(ArgumentError("dimension must be ≥ 1, got $d"))
+    ()
+end
+reduced_dims(::Tuple{}, region) = ()
+function reduced_dims(dims::Dims, region)
+    Base.depwarn("`reduced_dims` is deprecated for Dims-tuples; pass `indices` instead", :reduced_dims)
+    map(r->last(r), reduced_dims(map(n->OneTo(n), dims), region))
+end
+
+function reduced_dims0(::Tuple{}, d::Int)
+    d < 1 && throw(ArgumentError("dimension must be ≥ 1, got $d"))
+    ()
+end
+reduced_dims0(::Tuple{}, region) = ()
+function reduced_dims0(dims::Dims, region)
+    Base.depwarn("`reduced_dims0` is deprecated for Dims-tuples; pass `indices` instead", :reduced_dims0)
+    map(r->last(r), reduced_dims0(map(n->OneTo(n), dims), region))
+end
 
 # End deprecations scheduled for 0.6
