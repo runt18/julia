@@ -1093,17 +1093,10 @@ function show(io::IO, tv::TypeVar)
     # already printed and we don't need to print it again.
     # Otherwise, the lower bound should be printed if it is not `Bottom`
     # and the upper bound should be printed if it is not `Any`.
-    # The upper bound `Any` should also be printed if we are not in the
-    # existing `tvar_env` in order to resolve the ambiguity when printing a
-    # method signature.
-    # i.e. `foo{T,N}(::Array{T,N}, ::Vector)` should be printed as
-    # `foo{T,N}(::Array{T,N}, ::Array{T<:Any,1})`
     tvar_env = isa(io, IOContext) && get(io, :tvar_env, false)
     if isa(tvar_env, Vector{Any})
-        have_env = true
         in_env = (tv in tvar_env::Vector{Any})
     else
-        have_env = false
         in_env = false
     end
     lb, ub = tv.lb, tv.ub
@@ -1114,7 +1107,7 @@ function show(io::IO, tv::TypeVar)
         print(io, "<:")
     end
     write(io, tv.name)
-    if have_env ? !in_env : ub !== Any
+    if !in_env && ub !== Any
         print(io, "<:")
         isa(ub,UnionAll) && print(io, "(")
         show(io, ub)
