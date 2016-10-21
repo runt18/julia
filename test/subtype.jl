@@ -111,6 +111,18 @@ function test_diagonal()
 
     @test issub((@UnionAll S<:Int (@UnionAll R<:AbstractString Tuple{S,R,Vector{Any}})),
                 (@UnionAll T Tuple{T, T, Array{T,1}}))
+
+    @test issub_strict(Tuple{String, Real, Ref{Number}},
+                       (@UnionAll T Tuple{Union{T,String}, T, Ref{T}}))
+
+    @test issub_strict(Tuple{String, Real},
+                       (@UnionAll T Tuple{Union{T,String}, T}))
+
+    @test !issub(      Tuple{Real, Real},
+                       (@UnionAll T Tuple{Union{T,String}, T}))
+
+    @test issub_strict(Tuple{Int, Int},
+                       (@UnionAll T Tuple{Union{T,String}, T}))
 end
 
 # level 3: UnionAll
