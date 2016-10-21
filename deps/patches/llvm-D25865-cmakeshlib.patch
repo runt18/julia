@@ -1,0 +1,44 @@
+From 41d65a3fe9ad0af429f51142a1cb3a07d1a17acd Mon Sep 17 00:00:00 2001
+From: Valentin Churavy <v.churavy@gmail.com>
+Date: Fri, 21 Oct 2016 17:25:04 +0900
+Subject: [PATCH] Fix llvm-shlib cmake build
+
+Summary:
+This fixes a few things that used to work with a Makefile build, but were broken in cmake.
+
+1. Treat MINGW like a Linux system.
+2. The shlib should never contain other shared libraries.
+
+Subscribers: beanz, mgorny
+
+Differential Revision: https://reviews.llvm.org/D25865
+---
+ tools/llvm-shlib/CMakeLists.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tools/llvm-shlib/CMakeLists.txt b/tools/llvm-shlib/CMakeLists.txt
+index 3fe672d..f4440d2 100644
+--- a/tools/llvm-shlib/CMakeLists.txt
++++ b/tools/llvm-shlib/CMakeLists.txt
+@@ -12,7 +12,9 @@ if(LLVM_LINK_LLVM_DYLIB)
+   if(LLVM_DYLIB_EXPORTED_SYMBOL_FILE)
+     message(WARNING "Using LLVM_LINK_LLVM_DYLIB with LLVM_DYLIB_EXPORTED_SYMBOL_FILE may not work. Use at your own risk.")
+   endif()
++endif()
+ 
++if(LLVM_BUILD_LLVM_DYLIB)
+   # libLLVM.so should not have any dependencies on any other LLVM
+   # shared libraries. When using the "all" pseudo-component,
+   # LLVM_AVAILABLE_LIBS is added to the dependencies, which may
+@@ -39,7 +41,7 @@ endif()
+ add_llvm_library(LLVM SHARED DISABLE_LLVM_LINK_LLVM_DYLIB SONAME ${SOURCES})
+ 
+ list(REMOVE_DUPLICATES LIB_NAMES)
+-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux") # FIXME: It should be "GNU ld for elf"
++if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" OR MINGW) # FIXME: It should be "GNU ld for elf"
+   # GNU ld doesn't resolve symbols in the version script.
+   set(LIB_NAMES -Wl,--whole-archive ${LIB_NAMES} -Wl,--no-whole-archive)
+ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+-- 
+2.10.0
+
