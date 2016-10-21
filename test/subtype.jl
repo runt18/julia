@@ -507,6 +507,21 @@ function test_intersection()
     @testintersect(Tuple{Range{Int},Tuple{Int,Int}}, (@UnionAll T Tuple{AbstractArray{T},Dims}),
                    Tuple{Range{Int},Tuple{Int,Int}})
 
+    @testintersect((@UnionAll Integer<:T<:Number Array{T}), (@UnionAll T<:Number Array{T}),
+                   (@UnionAll Integer<:T<:Number Array{T}))
+
+    @testintersect((@UnionAll Integer<:T<:Number Array{T}), (@UnionAll T<:Real Array{T}),
+                   (@UnionAll Integer<:T<:Real Array{T}))
+
+    @testintersect((@UnionAll Integer<:T<:Number Array{T}), (@UnionAll T<:String Array{T}),
+                   Bottom)
+
+    @testintersect((@UnionAll Integer<:T<:Number Array{T}), (@UnionAll String<:T<:AbstractString Array{T}),
+                   Bottom)
+
+    @testintersect((@UnionAll T<:Number Array{T}), (@UnionAll T<:String Array{T}),
+                   Array{Bottom})
+
     @testintersect((@UnionAll T Tuple{T, AbstractArray{T}}), Tuple{Number, Array{Int,1}},
                    Tuple{Int, Array{Int,1}})
 
