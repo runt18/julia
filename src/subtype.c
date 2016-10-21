@@ -311,12 +311,15 @@ static int subtype_unionall(jl_value_t *t, jl_unionall_t *u, jl_stenv_t *e, int8
     // Then check concreteness by checking that the lower bound is not an abstract type.
     if (ans && (vb.concrete || (!vb.occurs_inv && vb.occurs_cov > 1))) {
         if (jl_is_typevar(vb.lb)) {
+            // TODO test case that demonstrates the need for this?
+            /*
             jl_tvar_t *v = (jl_tvar_t*)vb.lb;
             jl_varbinding_t *vlb = lookup(e, v);
             if (vlb)
                 vlb->concrete = 1;
             else  // TODO handle multiple variables in vb.concretevar
                 ans = (v == vb.concretevar);
+            */
         }
         else if (!is_leaf_bound(vb.lb)) {
             ans = 0;
@@ -324,12 +327,14 @@ static int subtype_unionall(jl_value_t *t, jl_unionall_t *u, jl_stenv_t *e, int8
         if (ans) {
             // if we occur as another var's lower bound, record the fact that we
             // were concrete so that subtype can return true for that var.
+            /*
             btemp = vb.prev;
             while (btemp != NULL) {
                 if (btemp->lb == (jl_value_t*)u->var)
                     btemp->concretevar = u->var;
                 btemp = btemp->prev;
             }
+            */
         }
     }
 
@@ -707,6 +712,12 @@ static jl_value_t *intersect_var(jl_tvar_t *b, jl_value_t *a, jl_stenv_t *e, int
         bb->ub = ub;
         bb->lb = ub;
     }
+    else if (bb->concrete) {
+        if (!subtype_ufirst(bb->lb, a, e))
+            return jl_bottom_type;
+        bb->ub = ub;
+        return (jl_value_t*)b;
+    }
     return ub;
 }
 
@@ -729,7 +740,8 @@ static jl_value_t *intersect_unionall(jl_value_t *t, jl_unionall_t *u, jl_stenv_
     JL_GC_PUSH4(&u, &vb.lb, &vb.ub, &res);
     e->vars = &vb;
     res = R ? intersect(t, u->body, e, param) : intersect(u->body, t, e, param);
-    if (res != jl_bottom_type && (vb.lb != u->var->lb || vb.ub != u->var->ub)) {
+    vb.concrete |= (!vb.occurs_inv && vb.occurs_cov > 1);
+    if (res != jl_bottom_type && (vb.concrete || vb.lb != u->var->lb || vb.ub != u->var->ub)) {
         vb.occurs_inv = 0;
         vb.occurs_cov = 0;
         res = R ? intersect(t, u->body, e, param) : intersect(u->body, t, e, param);
@@ -767,16 +779,19 @@ static jl_value_t *intersect_unionall(jl_value_t *t, jl_unionall_t *u, jl_stenv_
     // Then check concreteness by checking that the lower bound is not an abstract type.
     if (res != jl_bottom_type && (vb.concrete || (!vb.occurs_inv && vb.occurs_cov > 1))) {
         if (jl_is_typevar(vb.lb)) {
+            /*
             jl_tvar_t *v = (jl_tvar_t*)vb.lb;
             jl_varbinding_t *vlb = lookup(e, v);
             if (vlb)
                 vlb->concrete = 1;
             else if (v != vb.concretevar)
                 res = jl_bottom_type;
+            */
         }
         else if (!is_leaf_bound(vb.lb)) {
             res = jl_bottom_type;
         }
+        /*
         if (res != jl_bottom_type) {
             // if we occur as another var's lower bound, record the fact that we
             // were concrete so that subtype can return true for that var.
@@ -787,14 +802,22 @@ static jl_value_t *intersect_unionall(jl_value_t *t, jl_unionall_t *u, jl_stenv_
                 btemp = btemp->prev;
             }
         }
+        */
     }
+
+    // TODO: remove/replace free occurrences of this var in the environment
 
     // re-wrap body in `UnionAll v` if `v` still occurs
     if (res != jl_bottom_type) {
         if (jl_has_typevar(res, u->var)) {
             res = jl_new_struct(jl_unionall_type, u->var, res);
             if (obviously_egal(vb.lb, vb.ub) && !jl_is_typevar(vb.lb)) {
+                // given x<:T<:x, substitute x for T
                 res = jl_instantiate_unionall(res, vb.lb);
+            }
+            else if (!vb.occurs_inv && (!vb.concrete || is_leaf_bound(vb.ub))) {
+                // replace T<:x with x in covariant position when possible
+                res = jl_instantiate_unionall(res, vb.ub);
             }
             else {
                 vb.lb = (jl_value_t*)jl_new_typevar(u->var->name, vb.lb, vb.ub);
